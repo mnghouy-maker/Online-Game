@@ -80,6 +80,43 @@
     window.location.reload();
   });
 
+  /* ------------------------------ signup ---------------------------- */
+
+  $("show-signup").addEventListener("click", () => {
+    $("login-form").classList.add("hidden");
+    $("signup-form").classList.remove("hidden");
+    $("login-tagline").textContent = "Create your account. We approve it before you can play.";
+  });
+
+  $("show-login").addEventListener("click", () => {
+    $("signup-form").classList.add("hidden");
+    $("login-form").classList.remove("hidden");
+    $("login-tagline").textContent = "Welcome back. Log in to play.";
+  });
+
+  $("signup-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    $("signup-error").textContent = "";
+    $("signup-ok").classList.add("hidden");
+    try {
+      await api("/api/register", {
+        method: "POST",
+        body: JSON.stringify({
+          username: $("su-username").value,
+          name: $("su-name").value,
+          password: $("su-password").value,
+          requestedBalance: $("su-balance").value,
+        }),
+      });
+      $("signup-form").reset();
+      $("signup-ok").textContent =
+        "Account created and sent for approval. Once we approve it and set your balance, you can log in.";
+      $("signup-ok").classList.remove("hidden");
+    } catch (err) {
+      $("signup-error").textContent = err.message;
+    }
+  });
+
   /* ---------------------------- balance ----------------------------- */
 
   function setBalance(v) {

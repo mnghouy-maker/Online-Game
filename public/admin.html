@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/casino.css?v=1">
+  <link rel="stylesheet" href="css/casino.css?v=3">
 </head>
 <body>
 
@@ -23,6 +23,23 @@
 
     <div class="wrap">
       <div class="stat-grid" id="stat-grid"></div>
+
+      <div class="card hidden" id="pending-card" style="margin-bottom:20px;border-color:var(--gold);">
+        <h2 style="color:var(--gold-2);">Waiting for approval</h2>
+        <div class="table-scroll">
+          <table class="data">
+            <thead>
+              <tr>
+                <th>Customer</th>
+                <th>Requested balance</th>
+                <th>Signed up</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="pending-rows"></tbody>
+          </table>
+        </div>
+      </div>
 
       <div class="admin-grid">
         <div class="card">
@@ -71,6 +88,6 @@
   </div>
 
   <script src="js/symbols.js?v=1"></script>
-  <script src="js/admin.js?v=1"></script>
+  <script src="js/admin.js?v=2"></script>
 </body>
 </html>

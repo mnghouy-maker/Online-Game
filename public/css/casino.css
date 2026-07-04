@@ -147,6 +147,22 @@ input:focus, select:focus { outline: none; border-color: var(--gold); }
 .form-error { color: var(--red); font-size: 13px; margin-top: 10px; min-height: 18px; }
 .form-ok { color: var(--green); font-size: 13px; margin-top: 10px; }
 
+.switch-row {
+  margin-top: 14px;
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+}
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--gold);
+  font-size: 13px;
+  padding: 0;
+  text-decoration: underline;
+}
+.link-btn:hover { color: var(--gold-2); }
+
 /* ------------------------------ login ------------------------------- */
 
 .login-screen {

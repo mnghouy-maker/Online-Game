@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/casino.css?v=2">
+  <link rel="stylesheet" href="css/casino.css?v=3">
 </head>
 <body>
 
@@ -15,7 +15,8 @@
   <div id="login-screen" class="login-screen hidden">
     <div class="card login-card">
       <div class="brand"><span class="coin"></span>GOLDEN SPIN</div>
-      <div class="tagline">Members only. Ask us for an account.</div>
+      <div class="tagline" id="login-tagline">Welcome back. Log in to play.</div>
+
       <form id="login-form">
         <label for="login-username">Username</label>
         <input id="login-username" autocomplete="username" required>
@@ -23,6 +24,22 @@
         <input id="login-password" type="password" autocomplete="current-password" required>
         <button class="btn-gold" type="submit">Log in</button>
         <div class="form-error" id="login-error"></div>
+        <div class="switch-row">New here? <button type="button" class="link-btn" id="show-signup">Create an account</button></div>
+      </form>
+
+      <form id="signup-form" class="hidden">
+        <label for="su-username">Choose a username</label>
+        <input id="su-username" autocomplete="username" required placeholder="3-20 letters or numbers">
+        <label for="su-name">Your name</label>
+        <input id="su-name" placeholder="What we should call you (optional)">
+        <label for="su-password">Choose a password</label>
+        <input id="su-password" type="password" autocomplete="new-password" required placeholder="At least 6 characters">
+        <label for="su-balance">Starting balance you'd like to request</label>
+        <input id="su-balance" type="number" min="0" step="1" placeholder="e.g. 500 (we confirm it with you)">
+        <button class="btn-gold" type="submit">Sign up</button>
+        <div class="form-error" id="signup-error"></div>
+        <div class="form-ok hidden" id="signup-ok"></div>
+        <div class="switch-row">Already a member? <button type="button" class="link-btn" id="show-login">Log in</button></div>
       </form>
     </div>
   </div>
@@ -75,6 +92,6 @@
   </div>
 
   <script src="js/symbols.js?v=1"></script>
-  <script src="js/slot.js?v=1"></script>
+  <script src="js/slot.js?v=2"></script>
 </body>
 </html>

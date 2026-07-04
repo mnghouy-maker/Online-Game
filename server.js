@@ -227,6 +227,8 @@ function publicUser(u) {
     totalWagered: u.totalWagered,
     totalWon: u.totalWon,
     fortuneFreeSpins: (u.fortuneState && u.fortuneState.spins) || 0,
+    pending: !!u.pending,
+    requestedBalance: u.requestedBalance || 0,
   };
 }
 
@@ -240,6 +242,9 @@ app.post("/api/login", (req, res) => {
   if (!user || !checkPassword(password || "", user.passHash)) {
     return res.status(401).json({ error: "Wrong username or password" });
   }
+  if (user.pending) {
+    return res.status(403).json({ error: "Your account is waiting for approval. You can log in once we approve it." });
+  }
   if (!user.active) {
     return res.status(403).json({ error: "This account is disabled. Contact support." });
   }
@@ -251,6 +256,40 @@ app.post("/api/login", (req, res) => {
 
 app.post("/api/logout", (req, res) => {
   clearSessionCookie(res);
+  res.json({ ok: true });
+});
+
+// self-service signup: account is created locked and waits for admin approval
+app.post("/api/register", (req, res) => {
+  const { username, name, password, requestedBalance } = req.body || {};
+  const uname = String(username || "").trim().toLowerCase();
+  if (!/^[a-z0-9_.-]{3,20}$/.test(uname)) {
+    return res.status(400).json({ error: "Username: 3-20 chars, letters/numbers/._- only" });
+  }
+  if (db.users.some((u) => u.username.toLowerCase() === uname)) {
+    return res.status(400).json({ error: "That username is taken" });
+  }
+  if (!password || String(password).length < 6) {
+    return res.status(400).json({ error: "Password must be at least 6 characters" });
+  }
+  const requested = Math.min(1000000, Math.max(0, Math.floor(Number(requestedBalance) || 0)));
+  db.users.push({
+    id: db.nextId++,
+    username: uname,
+    name: String(name || uname).trim().slice(0, 40),
+    role: "customer",
+    passHash: hashPassword(password),
+    balance: 0,
+    active: false,
+    pending: true,
+    requestedBalance: requested,
+    tokenVersion: 1,
+    createdAt: Date.now(),
+    lastLoginAt: null,
+    totalWagered: 0,
+    totalWon: 0,
+  });
+  saveDb();
   res.json({ ok: true });
 });
 
@@ -397,13 +436,16 @@ app.post("/api/fortune/spin", requireAuth, (req, res) => {
 /* ----------------------------- admin ---------------------------- */
 
 app.get("/api/admin/overview", requireAdmin, (req, res) => {
-  const customers = db.users.filter((u) => u.role === "customer");
+  const all = db.users.filter((u) => u.role === "customer");
+  const customers = all.filter((u) => !u.pending);
+  const pending = all.filter((u) => u.pending);
   const totalWagered = customers.reduce((s, u) => s + u.totalWagered, 0);
   const totalWon = customers.reduce((s, u) => s + u.totalWon, 0);
   res.json({
     stats: {
       customers: customers.length,
       active: customers.filter((u) => u.active).length,
+      pending: pending.length,
       totalBalance: customers.reduce((s, u) => s + u.balance, 0),
       totalWagered,
       totalWon,
@@ -411,7 +453,27 @@ app.get("/api/admin/overview", requireAdmin, (req, res) => {
       spins: db.spins.filter((s) => customers.some((c) => c.id === s.userId)).length,
     },
     customers: customers.map(publicUser),
+    pending: pending.map(publicUser),
   });
+});
+
+app.post("/api/admin/customers/:id/approve", requireAdmin, (req, res) => {
+  const user = db.users.find(
+    (u) => u.id === Number(req.params.id) && u.role === "customer" && u.pending
+  );
+  if (!user) return res.status(404).json({ error: "Pending request not found" });
+  const body = req.body || {};
+  const balance = body.balance !== undefined
+    ? Math.floor(Number(body.balance))
+    : user.requestedBalance || 0;
+  if (isNaN(balance) || balance < 0) {
+    return res.status(400).json({ error: "Balance must be 0 or more" });
+  }
+  user.pending = false;
+  user.active = true;
+  user.balance = balance;
+  saveDb();
+  res.json({ user: publicUser(user) });
 });
 
 app.post("/api/admin/customers", requireAdmin, (req, res) => {

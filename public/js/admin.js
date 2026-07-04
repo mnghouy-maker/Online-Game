@@ -3,6 +3,7 @@
 (function () {
   const $ = (id) => document.getElementById(id);
   let customers = [];
+  let pending = [];
 
   async function api(path, opts) {
     const res = await fetch(path, Object.assign({
@@ -40,7 +41,9 @@
   async function refresh() {
     const data = await api("/api/admin/overview");
     customers = data.customers;
+    pending = data.pending || [];
     renderStats(data.stats);
+    renderPending();
     renderCustomers();
   }
 
@@ -48,13 +51,88 @@
 
   function renderStats(s) {
     const profitCls = s.houseProfit >= 0 ? "green" : "red";
+    const pendCls = s.pending > 0 ? "gold" : "";
     $("stat-grid").innerHTML = `
       <div class="stat"><div class="k">Customers</div><div class="v">${s.customers}</div></div>
       <div class="stat"><div class="k">Active</div><div class="v">${s.active}</div></div>
+      <div class="stat"><div class="k">Waiting approval</div><div class="v ${pendCls}">${s.pending}</div></div>
       <div class="stat"><div class="k">Customer balance</div><div class="v gold">${s.totalBalance.toLocaleString()}</div></div>
       <div class="stat"><div class="k">Total wagered</div><div class="v">${s.totalWagered.toLocaleString()}</div></div>
       <div class="stat"><div class="k">House profit</div><div class="v ${profitCls}">${s.houseProfit.toLocaleString()}</div></div>
       <div class="stat"><div class="k">Spins</div><div class="v">${s.spins.toLocaleString()}</div></div>`;
+  }
+
+  /* ------------------------- pending approvals ---------------------- */
+
+  function renderPending() {
+    $("pending-card").classList.toggle("hidden", pending.length === 0);
+    $("pending-rows").innerHTML = pending.map((c) => `
+      <tr>
+        <td><strong>${esc(c.name)}</strong><br><span style="color:var(--muted);font-size:12px;">@${esc(c.username)}</span></td>
+        <td class="num" style="color:var(--gold-2);font-weight:600;">${c.requestedBalance.toLocaleString()}</td>
+        <td style="color:var(--muted);font-size:12px;">${fmtDate(c.createdAt)}</td>
+        <td>
+          <div class="row-actions">
+            <button class="btn-gold btn-sm" data-pact="approve" data-id="${c.id}">Approve</button>
+            <button class="btn btn-sm btn-danger" data-pact="reject" data-id="${c.id}">Reject</button>
+          </div>
+        </td>
+      </tr>`).join("");
+  }
+
+  $("pending-rows").addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-pact]");
+    if (!btn) return;
+    const c = pending.find((x) => x.id === Number(btn.dataset.id));
+    if (!c) return;
+    if (btn.dataset.pact === "approve") openApproveModal(c);
+    else openRejectModal(c);
+  });
+
+  function openApproveModal(c) {
+    openModal(`
+      <h3>Approve ${esc(c.name)}?</h3>
+      <div class="sub">They asked for a starting balance of <strong style="color:var(--gold-2);">${c.requestedBalance.toLocaleString()}</strong>. Set the balance you actually want to give them.</div>
+      <label>Starting balance</label>
+      <input id="m-approve-balance" type="number" min="0" step="1" value="${c.requestedBalance}">
+      <div class="form-error" id="m-error"></div>
+      <div class="modal-actions">
+        <button class="btn" id="m-cancel">Cancel</button>
+        <button class="btn-gold" id="m-save" style="padding:10px 22px;">Approve account</button>
+      </div>`);
+    $("m-cancel").addEventListener("click", closeModal);
+    $("m-save").addEventListener("click", async () => {
+      try {
+        await api("/api/admin/customers/" + c.id + "/approve", {
+          method: "POST",
+          body: JSON.stringify({ balance: $("m-approve-balance").value }),
+        });
+        closeModal();
+        refresh();
+      } catch (err) {
+        $("m-error").textContent = err.message;
+      }
+    });
+  }
+
+  function openRejectModal(c) {
+    openModal(`
+      <h3>Reject ${esc(c.name)}?</h3>
+      <div class="sub">This deletes the signup request (@${esc(c.username)}). They can sign up again later.</div>
+      <div class="modal-actions">
+        <button class="btn" id="m-cancel">Cancel</button>
+        <button class="btn-danger btn" id="m-reject">Reject request</button>
+      </div>`);
+    $("m-cancel").addEventListener("click", closeModal);
+    $("m-reject").addEventListener("click", async () => {
+      try {
+        await api("/api/admin/customers/" + c.id, { method: "DELETE" });
+        closeModal();
+        refresh();
+      } catch (err) {
+        alert(err.message);
+      }
+    });
   }
 
   /* ---------------------------- customers --------------------------- */
