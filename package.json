@@ -1,0 +1,17 @@
+{
+  "name": "golden-spin-casino",
+  "version": "1.0.0",
+  "description": "Members-only casino site with a slot game. Customers log in to play; the admin creates accounts and controls balances and access.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT",
+  "private": true
+}
