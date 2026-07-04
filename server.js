@@ -161,7 +161,7 @@ const TOTAL_WEIGHT = SYMBOLS.reduce((s, x) => s + x.weight, 0);
 const PAY_TRIPLE = { cherry: 5, lemon: 5, bell: 10, star: 20, seven: 50, diamond: 200 };
 const PAY_PAIR = { cherry: 2, bell: 1, star: 1, seven: 4 };
 
-const ALLOWED_BETS = [1, 5, 10, 25, 50, 100];
+const ALLOWED_BETS = [1, 5, 10, 25, 50, 100, 500, 1000, 2000, 5000, 10000];
 
 function randomSymbol() {
   // crypto RNG, rejection-sampled so it's unbiased

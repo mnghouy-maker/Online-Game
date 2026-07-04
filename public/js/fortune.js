@@ -66,7 +66,7 @@
     config.bets.forEach((b) => {
       const btn = document.createElement("button");
       btn.className = "bet-btn" + (b === currentBet ? " selected" : "");
-      btn.textContent = b;
+      btn.textContent = b >= 1000 ? b / 1000 + "K" : b;
       btn.addEventListener("click", () => {
         if (spinning || freeSpins > 0) return;
         currentBet = b;

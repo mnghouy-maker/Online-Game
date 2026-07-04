@@ -54,7 +54,7 @@ const SCATTER_PAY = { 3: 3, 4: 10, 5: 50 };
 const FREE_SPINS_AWARD = 8;
 const FREE_SPIN_MULTIPLIER = 2;
 
-const ALLOWED_BETS = [10, 25, 50, 100];
+const ALLOWED_BETS = [10, 25, 50, 100, 500, 1000, 2000, 5000, 10000];
 
 // precompute cumulative weight tables per reel
 const REEL_TABLES = REEL_WEIGHTS.map((weights) => {
