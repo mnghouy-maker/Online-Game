@@ -132,7 +132,7 @@
       const strip = col.querySelector(".fstrip");
       const cellH = col.clientHeight / 3;
 
-      const fillers = 12 + reel * 4;
+      const fillers = turbo ? 4 + reel * 2 : 12 + reel * 4;
       let html = currentGrid[reel].map(cellHtml).join("");
       for (let k = 0; k < fillers; k++) html += cellHtml(randomSym());
       html += finalSyms.map(cellHtml).join("");
@@ -195,20 +195,62 @@
     });
   }
 
+  /* --------------------- auto / turbo / sound ----------------------- */
+
+  let turbo = localStorage.getItem("gs_turbo") === "1";
+  const AUTO_STEPS = [0, 10, 25, 50, -1]; // -1 = until stopped
+  let autoTarget = 0;
+  let autoLeft = 0;
+  let autoRunning = false;
+  let stopAuto = false;
+
+  function delay(ms) { return new Promise((r) => setTimeout(r, ms)); }
+
+  function autoLabel() {
+    if (autoRunning) return "STOP" + (autoTarget === -1 ? "" : " (" + autoLeft + ")");
+    if (autoTarget === 0) return "AUTO: OFF";
+    return "AUTO: " + (autoTarget === -1 ? "ENDLESS" : autoTarget);
+  }
+
+  function updateAutoUi() {
+    const b = $("auto-btn");
+    b.textContent = autoLabel();
+    b.classList.toggle("on", autoTarget !== 0 && !autoRunning);
+    b.classList.toggle("stop", autoRunning);
+    if (!autoRunning) $("spin-btn").textContent = freeSpins > 0 ? "FREE SPIN" : "SPIN";
+    else $("spin-btn").textContent = "STOP";
+  }
+
+  $("turbo-btn").classList.toggle("on", turbo);
+  $("turbo-btn").addEventListener("click", () => {
+    turbo = !turbo;
+    localStorage.setItem("gs_turbo", turbo ? "1" : "0");
+    $("turbo-btn").classList.toggle("on", turbo);
+    CasinoAudio.click();
+  });
+
+  $("auto-btn").addEventListener("click", () => {
+    CasinoAudio.click();
+    if (autoRunning) { stopAuto = true; return; }
+    autoTarget = AUTO_STEPS[(AUTO_STEPS.indexOf(autoTarget) + 1) % AUTO_STEPS.length];
+    updateAutoUi();
+  });
+
+  CasinoAudio.bindControls("sound-btn", "music-btn");
+
   /* ------------------------------ spin ------------------------------ */
 
-  $("spin-btn").addEventListener("click", async () => {
-    if (spinning) return;
+  // one spin; returns the result, or null when the session should stop
+  async function spinOnce() {
     const line = $("result-line");
 
     if (freeSpins === 0 && me.balance < currentBet) {
       line.className = "result-line lose";
       line.textContent = "Not enough balance — ask us to top you up.";
-      return;
+      return null;
     }
 
     spinning = true;
-    $("spin-btn").disabled = true;
     line.className = "result-line";
     line.innerHTML = "&nbsp;";
     document.querySelectorAll(".win-cell").forEach((c) => c.classList.remove("win-cell"));
@@ -223,14 +265,18 @@
       line.className = "result-line lose";
       line.textContent = err.message;
       spinning = false;
-      $("spin-btn").disabled = false;
-      return;
+      return null;
     }
 
+    CasinoAudio.spin();
     if (result.cost > 0) setBalance(me.balance - result.cost);
 
+    const baseDur = turbo ? 300 : 800;
+    const step = turbo ? 100 : 250;
     await Promise.all(
-      result.grid.map((syms, reel) => animateColumn(reel, syms, 800 + reel * 250))
+      result.grid.map((syms, reel) =>
+        animateColumn(reel, syms, baseDur + reel * step).then(() => CasinoAudio.reelStop())
+      )
     );
 
     currentGrid = result.grid.map((c) => c.slice());
@@ -249,14 +295,59 @@
     if (parts.length) {
       line.className = "result-line win";
       line.textContent = parts.join(" — ");
+      if (result.freeSpinsWon > 0) CasinoAudio.fanfare();
+      else CasinoAudio.win(result.win / result.bet);
     } else {
       line.className = "result-line lose";
       line.textContent = "No luck this time.";
+      CasinoAudio.lose();
     }
 
     updateFsUi();
+    updateAutoUi();
     loadHistory();
     spinning = false;
+    return result;
+  }
+
+  // free spins play themselves out (also mid-autoplay)
+  async function drainFreeSpins() {
+    while (freeSpins > 0 && !stopAuto) {
+      await delay(turbo ? 400 : 1000);
+      const r = await spinOnce();
+      if (!r) break;
+    }
+  }
+
+  async function runAuto() {
+    autoRunning = true;
+    stopAuto = false;
+    autoLeft = autoTarget === -1 ? 0 : autoTarget;
+    updateAutoUi();
+    while (!stopAuto) {
+      const r = await spinOnce();
+      if (!r) break;
+      if (freeSpins > 0) await drainFreeSpins();
+      if (autoTarget !== -1) {
+        autoLeft--;
+        if (autoLeft <= 0) break;
+      }
+      updateAutoUi();
+      if (stopAuto) break;
+      await delay(turbo ? 300 : 700);
+    }
+    autoRunning = false;
+    autoTarget = 0;
+    updateAutoUi();
+  }
+
+  $("spin-btn").addEventListener("click", async () => {
+    if (autoRunning) { stopAuto = true; return; }
+    if (spinning) return;
+    if (autoTarget !== 0 && freeSpins === 0) { runAuto(); return; }
+    $("spin-btn").disabled = true;
+    const r = await spinOnce();
+    if (r && freeSpins > 0) await drainFreeSpins();
     $("spin-btn").disabled = false;
   });
 

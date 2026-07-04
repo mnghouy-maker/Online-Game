@@ -192,7 +192,7 @@
       const strip = reel.querySelector(".strip");
       const cellH = reel.clientHeight;
 
-      const fillerCount = 14 + i * 5;
+      const fillerCount = turbo ? 5 + i * 2 : 14 + i * 5;
       let html = cellHtml(currentReels[i]);
       for (let k = 0; k < fillerCount; k++) html += cellHtml(randomFiller());
       html += cellHtml(finalSym);
@@ -219,20 +219,61 @@
     });
   }
 
+  /* --------------------- auto / turbo / sound ----------------------- */
+
+  let turbo = localStorage.getItem("gs_turbo") === "1";
+  const AUTO_STEPS = [0, 10, 25, 50, -1]; // -1 = until stopped
+  let autoTarget = 0;
+  let autoLeft = 0;
+  let autoRunning = false;
+  let stopAuto = false;
+
+  function delay(ms) { return new Promise((r) => setTimeout(r, ms)); }
+
+  function autoLabel() {
+    if (autoRunning) return "STOP" + (autoTarget === -1 ? "" : " (" + autoLeft + ")");
+    if (autoTarget === 0) return "AUTO: OFF";
+    return "AUTO: " + (autoTarget === -1 ? "ENDLESS" : autoTarget);
+  }
+
+  function updateAutoUi() {
+    const b = $("auto-btn");
+    b.textContent = autoLabel();
+    b.classList.toggle("on", autoTarget !== 0 && !autoRunning);
+    b.classList.toggle("stop", autoRunning);
+    $("spin-btn").textContent = autoRunning ? "STOP" : "SPIN";
+  }
+
+  $("turbo-btn").classList.toggle("on", turbo);
+  $("turbo-btn").addEventListener("click", () => {
+    turbo = !turbo;
+    localStorage.setItem("gs_turbo", turbo ? "1" : "0");
+    $("turbo-btn").classList.toggle("on", turbo);
+    CasinoAudio.click();
+  });
+
+  $("auto-btn").addEventListener("click", () => {
+    CasinoAudio.click();
+    if (autoRunning) { stopAuto = true; return; }
+    autoTarget = AUTO_STEPS[(AUTO_STEPS.indexOf(autoTarget) + 1) % AUTO_STEPS.length];
+    updateAutoUi();
+  });
+
+  CasinoAudio.bindControls("sound-btn", "music-btn");
+
   /* ------------------------------ spin ------------------------------ */
 
-  $("spin-btn").addEventListener("click", async () => {
-    if (spinning) return;
+  // one spin; returns false when the auto session should stop
+  async function spinOnce() {
     const line = $("result-line");
 
     if (me.balance < currentBet) {
       line.className = "result-line lose";
       line.textContent = "Not enough balance — ask us to top you up.";
-      return;
+      return false;
     }
 
     spinning = true;
-    $("spin-btn").disabled = true;
     line.className = "result-line";
     line.innerHTML = "&nbsp;";
     document.querySelectorAll(".reel").forEach((r) => r.classList.remove("win-flash"));
@@ -247,17 +288,18 @@
       line.className = "result-line lose";
       line.textContent = err.message;
       spinning = false;
-      $("spin-btn").disabled = false;
-      return;
+      return false;
     }
 
+    CasinoAudio.spin();
     // show the bet leaving the balance while the reels spin
     setBalance(me.balance - currentBet);
 
+    const base = turbo ? [300, 420, 540] : [900, 1400, 1900];
     await Promise.all([
-      animateReel(0, result.reels[0], 900),
-      animateReel(1, result.reels[1], 1400),
-      animateReel(2, result.reels[2], 1900),
+      animateReel(0, result.reels[0], base[0]).then(() => CasinoAudio.reelStop()),
+      animateReel(1, result.reels[1], base[1]).then(() => CasinoAudio.reelStop()),
+      animateReel(2, result.reels[2], base[2]).then(() => CasinoAudio.reelStop()),
     ]);
 
     currentReels = result.reels.slice();
@@ -268,13 +310,45 @@
       const what = result.kind === "triple" ? "Three " : "Two ";
       line.textContent = what + SYMBOL_NAME[result.symbol] + "s! You win " + result.win.toLocaleString() + " (x" + result.multiplier + ")";
       document.querySelectorAll(".reel").forEach((r) => r.classList.add("win-flash"));
+      CasinoAudio.win(result.multiplier);
     } else {
       line.className = "result-line lose";
       line.textContent = "No luck this time.";
+      CasinoAudio.lose();
     }
 
     loadHistory();
     spinning = false;
+    return true;
+  }
+
+  async function runAuto() {
+    autoRunning = true;
+    stopAuto = false;
+    autoLeft = autoTarget === -1 ? 0 : autoTarget;
+    updateAutoUi();
+    while (!stopAuto) {
+      const ok = await spinOnce();
+      if (!ok) break;
+      if (autoTarget !== -1) {
+        autoLeft--;
+        if (autoLeft <= 0) break;
+      }
+      updateAutoUi();
+      if (stopAuto) break;
+      await delay(turbo ? 300 : 700);
+    }
+    autoRunning = false;
+    autoTarget = 0;
+    updateAutoUi();
+  }
+
+  $("spin-btn").addEventListener("click", async () => {
+    if (autoRunning) { stopAuto = true; return; }
+    if (spinning) return;
+    if (autoTarget !== 0) { runAuto(); return; }
+    $("spin-btn").disabled = true;
+    await spinOnce();
     $("spin-btn").disabled = false;
   });
 
