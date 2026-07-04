@@ -254,10 +254,12 @@
       list.innerHTML = data.spins.map((s) => {
         const t = new Date(s.at);
         const time = t.getHours().toString().padStart(2, "0") + ":" + t.getMinutes().toString().padStart(2, "0");
-        const net = s.win - s.bet;
+        const cost = s.freeSpin ? 0 : s.bet;
+        const net = s.win - cost;
         const cls = net >= 0 && s.win > 0 ? "win" : "lose";
         const amt = (net > 0 ? "+" : "") + net.toLocaleString();
-        return "<li><span>" + time + " · bet " + s.bet + "</span><span class=\"amt " + cls + "\">" + amt + "</span></li>";
+        const label = s.game === "fortune" ? (s.freeSpin ? "fortune · free" : "fortune · bet " + s.bet) : "bet " + s.bet;
+        return "<li><span>" + time + " · " + label + "</span><span class=\"amt " + cls + "\">" + amt + "</span></li>";
       }).join("");
     } catch (e) { /* not fatal */ }
   }

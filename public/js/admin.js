@@ -205,13 +205,16 @@
     const rows = spins.length
       ? spins.map((s) => {
           const d = new Date(s.at);
-          const net = s.win - s.bet;
+          const cost = s.freeSpin ? 0 : s.bet;
+          const net = s.win - cost;
           const col = net > 0 ? "var(--green)" : net < 0 ? "var(--red)" : "var(--muted)";
-          const reels = s.reels.map((r) => SYMBOL_NAME[r] || r).join(" · ");
+          const detail = s.reels
+            ? "Lucky Reels: " + s.reels.map((r) => SYMBOL_NAME[r] || r).join(" · ")
+            : "Fortune God" + (s.freeSpin ? " (free spin)" : "");
           return `<tr>
             <td style="color:var(--muted);font-size:12px;">${d.toLocaleDateString()} ${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}</td>
             <td class="num">${s.bet}</td>
-            <td style="font-size:12px;">${reels}</td>
+            <td style="font-size:12px;">${detail}</td>
             <td class="num" style="color:${col};font-weight:600;">${net > 0 ? "+" : ""}${net.toLocaleString()}</td>
           </tr>`;
         }).join("")
@@ -221,7 +224,7 @@
       <div class="sub">Last ${spins.length} spins, newest first.</div>
       <div class="table-scroll">
         <table class="data">
-          <thead><tr><th>When</th><th>Bet</th><th>Reels</th><th>Net</th></tr></thead>
+          <thead><tr><th>When</th><th>Bet</th><th>Game</th><th>Net</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>

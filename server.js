@@ -15,6 +15,7 @@ const express = require("express");
 const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
+const fortune = require("./games/fortune");
 
 const PORT = process.env.PORT || process.env.CASINO_PORT || 8090;
 const DATA_DIR = process.env.CASINO_DATA_DIR || path.join(__dirname, "data");
@@ -225,6 +226,7 @@ function publicUser(u) {
     lastLoginAt: u.lastLoginAt,
     totalWagered: u.totalWagered,
     totalWon: u.totalWon,
+    fortuneFreeSpins: (u.fortuneState && u.fortuneState.spins) || 0,
   };
 }
 
@@ -301,6 +303,7 @@ app.post("/api/spin", requireAuth, (req, res) => {
 
   db.spins.push({
     userId: req.user.id,
+    game: "slot",
     bet,
     reels,
     win,
@@ -326,6 +329,69 @@ app.get("/api/history", requireAuth, (req, res) => {
     .slice(-50)
     .reverse();
   res.json({ spins: mine });
+});
+
+/* ------------------------- Fortune God game ----------------------- */
+
+app.get("/api/fortune/config", (req, res) => {
+  res.json({
+    bets: fortune.ALLOWED_BETS,
+    paytable: fortune.PAYTABLE,
+    scatterPay: fortune.SCATTER_PAY,
+    paylines: fortune.PAYLINES,
+    freeSpinsAward: fortune.FREE_SPINS_AWARD,
+    freeSpinMultiplier: fortune.FREE_SPIN_MULTIPLIER,
+  });
+});
+
+app.post("/api/fortune/spin", requireAuth, (req, res) => {
+  const state = req.user.fortuneState || null;
+  const inFreeSpins = state && state.spins > 0;
+  const bet = Number(req.body && req.body.bet);
+
+  if (!inFreeSpins) {
+    if (!fortune.ALLOWED_BETS.includes(bet)) {
+      return res.status(400).json({ error: "Invalid bet amount" });
+    }
+    if (req.user.balance < bet) {
+      return res.status(400).json({ error: "Not enough balance" });
+    }
+  }
+
+  const r = fortune.play(bet, state);
+
+  req.user.balance = req.user.balance - r.cost + r.win;
+  req.user.totalWagered += r.cost;
+  req.user.totalWon += r.win;
+  req.user.fortuneState = r.state.spins > 0 ? r.state : null;
+
+  db.spins.push({
+    userId: req.user.id,
+    game: "fortune",
+    bet: r.bet,
+    win: r.win,
+    freeSpin: r.wasFreeSpin,
+    scatters: r.scatters,
+    balanceAfter: req.user.balance,
+    at: Date.now(),
+  });
+  if (db.spins.length > MAX_SPIN_LOG) db.spins = db.spins.slice(-MAX_SPIN_LOG);
+  saveDb();
+
+  res.json({
+    grid: r.grid,
+    bet: r.bet,
+    cost: r.cost,
+    win: r.win,
+    lineWins: r.lineWins,
+    scatters: r.scatters,
+    scatterWin: r.scatterWin,
+    freeSpinsWon: r.freeSpinsWon,
+    wasFreeSpin: r.wasFreeSpin,
+    multiplier: r.multiplier,
+    freeSpinsLeft: r.state.spins,
+    balance: req.user.balance,
+  });
 });
 
 /* ----------------------------- admin ---------------------------- */
@@ -432,6 +498,10 @@ app.delete("/api/admin/customers/:id", requireAdmin, (req, res) => {
 
 app.get("/admin", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "admin.html"));
+});
+
+app.get("/fortune", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "fortune.html"));
 });
 
 /* ----------------------------------------------------------------- */

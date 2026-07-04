@@ -3,36 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Golden Spin</title>
+  <title>Fortune God — Golden Spin</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/casino.css?v=2">
 </head>
-<body>
+<body class="fortune-theme">
 
-  <!-- ============ LOGIN ============ -->
-  <div id="login-screen" class="login-screen hidden">
-    <div class="card login-card">
-      <div class="brand"><span class="coin"></span>GOLDEN SPIN</div>
-      <div class="tagline">Members only. Ask us for an account.</div>
-      <form id="login-form">
-        <label for="login-username">Username</label>
-        <input id="login-username" autocomplete="username" required>
-        <label for="login-password">Password</label>
-        <input id="login-password" type="password" autocomplete="current-password" required>
-        <button class="btn-gold" type="submit">Log in</button>
-        <div class="form-error" id="login-error"></div>
-      </form>
-    </div>
-  </div>
-
-  <!-- ============ GAME ============ -->
   <div id="game-screen" class="hidden">
     <div class="topbar">
       <div class="brand"><span class="coin"></span>GOLDEN SPIN</div>
       <div class="topbar-right">
-        <a class="btn btn-sm" href="/fortune">Fortune God</a>
+        <a class="btn btn-sm" href="/">Lucky Reels</a>
         <div class="balance-chip">
           <span class="label">Balance</span>
           <span class="value" id="balance">0</span>
@@ -45,13 +28,10 @@
 
     <div class="wrap">
       <div class="game-grid">
-        <div class="card machine">
-          <h1>LUCKY REELS</h1>
-          <div class="reels">
-            <div class="reel" id="reel-0"><div class="strip"></div></div>
-            <div class="reel" id="reel-1"><div class="strip"></div></div>
-            <div class="reel" id="reel-2"><div class="strip"></div></div>
-          </div>
+        <div class="card machine fortune-machine">
+          <h1>FORTUNE GOD</h1>
+          <div class="fs-banner hidden" id="fs-banner"></div>
+          <div class="fgrid" id="fgrid"></div>
           <div class="result-line" id="result-line">&nbsp;</div>
           <div class="bet-row">
             <span class="label">Bet</span>
@@ -62,8 +42,9 @@
 
         <div>
           <div class="card paytable" style="margin-bottom:20px;">
-            <h2>Paytable</h2>
+            <h2>Paytable (x bet)</h2>
             <table id="paytable-body"></table>
+            <div class="rules-note" id="rules-note"></div>
           </div>
           <div class="card">
             <h2>Recent spins</h2>
@@ -74,7 +55,7 @@
     </div>
   </div>
 
-  <script src="js/symbols.js?v=1"></script>
-  <script src="js/slot.js?v=1"></script>
+  <script src="js/fortune-symbols.js?v=1"></script>
+  <script src="js/fortune.js?v=1"></script>
 </body>
 </html>
